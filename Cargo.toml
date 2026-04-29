@@ -1,0 +1,17 @@
+[package]
+name = "usb-map-gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+slint = { version = "1.16.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2"] }
+udev = "0.9.3"
+fontique = { version = "0.8.0", features = ["fontconfig-dlopen"] }
+
+[build-dependencies]
+slint-build = "1.16.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

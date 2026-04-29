@@ -1,0 +1,135 @@
+import { ListView } from "std-widgets.slint";
+
+export struct DeviceRowData {
+    row-kind-label: string,
+    virtual-name: string,
+    physical-name: string,
+    interface-id: string,
+    can-use-for-rule: bool,
+}
+
+component DeviceHeaderCell inherits Rectangle {
+    in property <string> title;
+    in property <length> cell-width;
+
+    min-width: cell-width;
+    height: 40px;
+    background: #f4f7fb;
+
+    Text {
+        text: root.title;
+        color: #2b3443;
+        font-weight: 700;
+        vertical-alignment: center;
+        x: 12px;
+        width: parent.width - 24px;
+        height: parent.height;
+    }
+}
+
+component DeviceValueCell inherits Rectangle {
+    in property <string> value;
+    in property <length> cell-width;
+    in property <color> text-color: #1f2937;
+
+    min-width: cell-width;
+    height: 44px;
+
+    Text {
+        text: root.value;
+        color: root.text-color;
+        vertical-alignment: center;
+        x: 12px;
+        width: parent.width - 24px;
+        height: parent.height;
+    }
+}
+
+component DeviceTableRow inherits Rectangle {
+    in property <DeviceRowData> row-data;
+    in property <int> row-index;
+    callback activate-row(index: int);
+
+    height: 44px;
+    background: touch-area.has-hover ? #edf5ff : transparent;
+
+    HorizontalLayout {
+        spacing: 0px;
+
+        DeviceValueCell {
+            cell-width: 110px;
+            value: row-data.row-kind-label;
+            text-color: #355070;
+        }
+
+        DeviceValueCell {
+            cell-width: 180px;
+            value: row-data.virtual-name;
+        }
+
+        DeviceValueCell {
+            cell-width: 180px;
+            value: row-data.physical-name;
+        }
+
+        DeviceValueCell {
+            cell-width: 250px;
+            value: row-data.interface-id;
+            text-color: row-data.can-use-for-rule ? #0f5132 : #8a6d3b;
+        }
+    }
+
+    touch-area := TouchArea {
+        clicked => {
+            root.activate-row(root.row-index);
+        }
+    }
+
+    Rectangle {
+        y: parent.height - 1px;
+        width: parent.width;
+        height: 1px;
+        background: #d9e1ec;
+    }
+}
+
+export component DeviceTable {
+    in property <[DeviceRowData]> rows;
+    callback row-selected(index: int);
+
+    VerticalLayout {
+        spacing: 0px;
+
+        Rectangle {
+            border-color: #d9e1ec;
+            border-width: 1px;
+            background: white;
+
+            HorizontalLayout {
+                spacing: 0px;
+
+                DeviceHeaderCell { cell-width: 110px; title: "设备类型"; }
+                DeviceHeaderCell { cell-width: 180px; title: "虚拟设备"; }
+                DeviceHeaderCell { cell-width: 180px; title: "物理设备"; }
+                DeviceHeaderCell { cell-width: 250px; title: "接口 ID"; }
+            }
+        }
+
+        Rectangle {
+            border-color: #d9e1ec;
+            border-width: 1px;
+            background: white;
+            min-height: 260px;
+
+            ListView {
+                for row[index] in root.rows : DeviceTableRow {
+                    row-data: row;
+                    row-index: index;
+                    activate-row(index) => {
+                        root.row-selected(index);
+                    }
+                }
+            }
+        }
+    }
+}
