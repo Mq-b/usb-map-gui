@@ -1,11 +1,114 @@
-import { Button, GroupBox, HorizontalBox, LineEdit, VerticalBox } from "std-widgets.slint";
+import { LineEdit, ScrollView } from "std-widgets.slint";
 import { DeviceTable, DeviceRowData } from "./device_table.slint";
 
+component ActionButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> primary: false;
+    callback clicked;
+
+    min-width: primary ? 160px : 120px;
+    height: 36px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: primary ? touch.has-hover ? #1a4fd6 : #2f63f6 : touch.has-hover ? #b8c4d6 : #d7deea;
+    background: primary ? touch.has-hover ? #1a4fd6 : #2f63f6 : touch.has-hover ? #f8fafc : white;
+
+    animate border-color, background { duration: 150ms; }
+
+    Text {
+        text: root.label;
+        color: root.primary ? white : #243750;
+        font-size: 14px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component FilterButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    callback clicked;
+
+    min-width: 100px;
+    height: 32px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: active ? #2f63f6 : touch.has-hover ? #b8c4d6 : #d7deea;
+    background: active ? #eef2ff : touch.has-hover ? #f8fafc : white;
+
+    animate border-color, background { duration: 150ms; }
+
+    Text {
+        text: root.label;
+        color: active ? #2f63f6 : #475569;
+        font-size: 13px;
+        font-weight: active ? 600 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component FormField inherits Rectangle {
+    in property <string> field-label;
+    in-out property <string> field-value;
+    in property <string> placeholder;
+
+    vertical-stretch: 0;
+    background: transparent;
+
+    VerticalLayout {
+        spacing: 4px;
+
+        Text {
+            text: root.field-label;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        Rectangle {
+            height: 36px;
+            border-radius: 6px;
+            border-width: 1px;
+            border-color: #d1d5db;
+            background: white;
+
+            LineEdit {
+                text <=> root.field-value;
+                placeholder-text: root.placeholder;
+                x: 10px;
+                y: 6px;
+                width: parent.width - 20px;
+                height: parent.height - 12px;
+            }
+        }
+    }
+}
+
 export component MainWindow inherits Window {
-    title: "USB 串口映射工具";
-    width: 960px;
-    height: 700px;
-    background: #eef3f8;
+    title: "USB Serial Mapper";
+    min-width: 900px;
+    min-height: 640px;
+    background: #f9fafb;
 
     in-out property <string> virtual-name-input;
     in-out property <string> physical-id-input;
@@ -22,179 +125,154 @@ export component MainWindow inherits Window {
     callback use-row-for-rule(index: int);
     callback save-rule-requested();
 
-    VerticalBox {
-        padding: 20px;
-        spacing: 16px;
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
 
-        Rectangle {
-            border-radius: 14px;
-            background: white;
-            border-color: #d9e1ec;
-            border-width: 1px;
-            min-height: 92px;
+        // Toolbar
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: stretch;
 
-            VerticalBox {
-                padding: 18px;
-                spacing: 8px;
+            Text {
+                text: "USB Serial Mapper";
+                color: #111827;
+                font-size: 18px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+
+            Rectangle { horizontal-stretch: 1; }
+
+            ActionButton {
+                primary: true;
+                label: "刷新设备列表";
+                clicked => { root.request-refresh(); }
+            }
+        }
+
+        // Filter bar
+        HorizontalLayout {
+            spacing: 6px;
+
+            FilterButton {
+                label: "全部";
+                active: root.current-filter-label == "全部设备";
+                clicked => { root.select-all-filter(); }
+            }
+
+            FilterButton {
+                label: "虚拟链接";
+                active: root.current-filter-label == "仅虚拟链接";
+                clicked => { root.select-virtual-filter(); }
+            }
+
+            FilterButton {
+                label: "物理设备";
+                active: root.current-filter-label == "仅物理设备";
+                clicked => { root.select-physical-filter(); }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
 
                 Text {
-                    text: "USB 串口映射";
-                    color: #132238;
-                    font-size: 24px;
-                    font-weight: 700;
-                }
-
-                Text {
-                    text: "上半部分查看当前 /dev 设备映射，下半部分生成或更新 udev 规则。";
-                    color: #4a6077;
-                    wrap: word-wrap;
+                    text: root.current-filter-label;
+                    color: #9ca3af;
+                    font-size: 12px;
+                    horizontal-alignment: right;
+                    vertical-alignment: center;
+                    width: parent.width;
+                    height: parent.height;
                 }
             }
         }
 
-        GroupBox {
-            title: "设备列表";
+        // Device table
+        DeviceTable {
+            vertical-stretch: 1;
+            rows: root.device-rows;
+            row-selected(index) => {
+                root.use-row-for-rule(index);
+            }
+        }
 
-            VerticalBox {
+        // Rule form card
+        Rectangle {
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: #e5e7eb;
+            background: white;
+            vertical-stretch: 0;
+            clip: true;
+
+            VerticalLayout {
+                padding: 16px;
                 spacing: 12px;
 
-                HorizontalBox {
-                    spacing: 10px;
-
-                    Button {
-                        text: "刷新设备列表";
-                        clicked => { root.request-refresh(); }
-                    }
-
-                    Button {
-                        text: "显示全部";
-                        clicked => { root.select-all-filter(); }
-                    }
-
-                    Button {
-                        text: "仅虚拟链接";
-                        clicked => { root.select-virtual-filter(); }
-                    }
-
-                    Button {
-                        text: "仅物理设备";
-                        clicked => { root.select-physical-filter(); }
-                    }
+                HorizontalLayout {
+                    spacing: 12px;
+                    alignment: stretch;
 
                     Text {
-                        text: "当前过滤: " + root.current-filter-label;
-                        color: #44566c;
+                        text: "udev 规则";
+                        color: #111827;
+                        font-size: 15px;
+                        font-weight: 700;
                         vertical-alignment: center;
                     }
-                }
 
-                Text {
-                    text: "提示：点击列表任意行，会把该行的接口 ID 自动带入下方规则表单。";
-                    color: #4a6077;
-                    wrap: word-wrap;
-                }
+                    Rectangle { horizontal-stretch: 1; }
 
-                DeviceTable {
-                    rows: root.device-rows;
-                    row-selected(index) => {
-                        root.use-row-for-rule(index);
-                    }
-                }
-            }
-        }
-
-        GroupBox {
-            title: "规则表单";
-
-            VerticalBox {
-                spacing: 12px;
-
-                Text {
-                    text: "规则会按物理接口 ID 定位设备，并在 /dev 下创建稳定的符号链接。";
-                    color: #4a6077;
-                    wrap: word-wrap;
-                }
-
-                HorizontalBox {
-                    spacing: 12px;
-
-                    VerticalBox {
-                        spacing: 6px;
-
-                        Text {
-                            text: "虚拟设备名称";
-                            color: #223247;
-                            font-weight: 600;
-                        }
-
-                        LineEdit {
-                            text <=> root.virtual-name-input;
-                            placeholder-text: "例如 ttyCAN";
-                        }
-                    }
-
-                    VerticalBox {
-                        spacing: 6px;
-
-                        Text {
-                            text: "物理接口 ID";
-                            color: #223247;
-                            font-weight: 600;
-                        }
-
-                        LineEdit {
-                            text <=> root.physical-id-input;
-                            placeholder-text: "例如 1-4.5:1.0";
-                        }
-                    }
-                }
-
-                VerticalBox {
-                    spacing: 6px;
-
-                    Text {
-                        text: "规则文件路径";
-                        color: #223247;
-                        font-weight: 600;
-                    }
-
-                    LineEdit {
-                        text <=> root.rule-file-input;
-                        placeholder-text: "/etc/udev/rules.d/relia.rules";
-                    }
-                }
-
-                HorizontalBox {
-                    spacing: 12px;
-
-                    Button {
-                        text: "保存或更新规则";
+                    ActionButton {
+                        primary: true;
+                        label: "添加规则";
                         clicked => { root.save-rule-requested(); }
                     }
+                }
 
-                    Text {
-                        text: "保存后请重载 udev 规则。";
-                        color: #4a6077;
-                        vertical-alignment: center;
+                HorizontalLayout {
+                    spacing: 12px;
+
+                    FormField {
+                        field-label: "虚拟设备名称";
+                        field-value <=> root.virtual-name-input;
+                        placeholder: "例如 ttyCAN";
+                        horizontal-stretch: 1;
+                    }
+
+                    FormField {
+                        field-label: "物理接口 ID";
+                        field-value <=> root.physical-id-input;
+                        placeholder: "例如 1-4.5:1.0";
+                        horizontal-stretch: 1;
+                    }
+
+                    FormField {
+                        field-label: "规则文件路径";
+                        field-value <=> root.rule-file-input;
+                        placeholder: "/etc/udev/rules.d/relia.rules";
+                        horizontal-stretch: 2;
                     }
                 }
             }
         }
 
+        // Status bar
         Rectangle {
-            border-radius: 10px;
-            background: root.status-is-error ? #fff1f0 : #eff9f0;
-            border-color: root.status-is-error ? #f3b5ad : #b9dfbc;
-            border-width: 1px;
-            min-height: 60px;
+            height: 32px;
+            border-radius: 6px;
+            background: root.status-is-error ? #fef2f2 : #f0fdf4;
 
             Text {
                 text: root.status-message;
-                color: root.status-is-error ? #8f2d23 : #215b2d;
-                wrap: word-wrap;
-                x: 14px;
-                y: 12px;
-                width: parent.width - 28px;
+                color: root.status-is-error ? #dc2626 : #16a34a;
+                font-size: 13px;
+                vertical-alignment: center;
+                x: 12px;
+                width: parent.width - 24px;
+                height: parent.height;
+                overflow: elide;
             }
         }
     }

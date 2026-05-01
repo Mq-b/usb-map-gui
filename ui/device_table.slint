@@ -8,18 +8,19 @@ export struct DeviceRowData {
     can-use-for-rule: bool,
 }
 
-component DeviceHeaderCell inherits Rectangle {
+component HeaderCell inherits Rectangle {
     in property <string> title;
     in property <length> cell-width;
 
-    min-width: cell-width;
-    height: 40px;
-    background: #f4f7fb;
+    width: cell-width;
+    height: 36px;
+    background: #f9fafb;
 
     Text {
         text: root.title;
-        color: #2b3443;
-        font-weight: 700;
+        color: #6b7280;
+        font-size: 12px;
+        font-weight: 600;
         vertical-alignment: center;
         x: 12px;
         width: parent.width - 24px;
@@ -27,21 +28,24 @@ component DeviceHeaderCell inherits Rectangle {
     }
 }
 
-component DeviceValueCell inherits Rectangle {
+component ValueCell inherits Rectangle {
     in property <string> value;
     in property <length> cell-width;
-    in property <color> text-color: #1f2937;
+    in property <color> text-color: #111827;
 
-    min-width: cell-width;
-    height: 44px;
+    width: cell-width;
+    height: 36px;
+    background: transparent;
 
     Text {
         text: root.value;
         color: root.text-color;
+        font-size: 13px;
         vertical-alignment: center;
         x: 12px;
         width: parent.width - 24px;
         height: parent.height;
+        overflow: elide;
     }
 }
 
@@ -50,36 +54,39 @@ component DeviceTableRow inherits Rectangle {
     in property <int> row-index;
     callback activate-row(index: int);
 
-    height: 44px;
-    background: touch-area.has-hover ? #edf5ff : transparent;
+    height: 36px;
+    background: touch.has-hover ? #f3f4f6 : white;
+
+    animate background { duration: 150ms; }
 
     HorizontalLayout {
         spacing: 0px;
 
-        DeviceValueCell {
-            cell-width: 110px;
+        ValueCell {
+            cell-width: 120px;
             value: row-data.row-kind-label;
-            text-color: #355070;
+            text-color: #6b7280;
         }
 
-        DeviceValueCell {
-            cell-width: 180px;
+        ValueCell {
+            cell-width: 200px;
             value: row-data.virtual-name;
         }
 
-        DeviceValueCell {
-            cell-width: 180px;
+        ValueCell {
+            cell-width: 200px;
             value: row-data.physical-name;
         }
 
-        DeviceValueCell {
-            cell-width: 250px;
+        ValueCell {
+            cell-width: 180px;
             value: row-data.interface-id;
-            text-color: row-data.can-use-for-rule ? #0f5132 : #8a6d3b;
+            text-color: row-data.can-use-for-rule ? #059669 : #d97706;
         }
     }
 
-    touch-area := TouchArea {
+    touch := TouchArea {
+        mouse-cursor: pointer;
         clicked => {
             root.activate-row(root.row-index);
         }
@@ -89,45 +96,72 @@ component DeviceTableRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width;
         height: 1px;
-        background: #d9e1ec;
+        background: #f3f4f6;
     }
 }
 
-export component DeviceTable {
+export component DeviceTable inherits Rectangle {
     in property <[DeviceRowData]> rows;
     callback row-selected(index: int);
+
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: #e5e7eb;
+    background: white;
+    clip: true;
 
     VerticalLayout {
         spacing: 0px;
 
         Rectangle {
-            border-color: #d9e1ec;
-            border-width: 1px;
-            background: white;
+            height: 36px;
+            background: #f9fafb;
 
             HorizontalLayout {
                 spacing: 0px;
 
-                DeviceHeaderCell { cell-width: 110px; title: "设备类型"; }
-                DeviceHeaderCell { cell-width: 180px; title: "虚拟设备"; }
-                DeviceHeaderCell { cell-width: 180px; title: "物理设备"; }
-                DeviceHeaderCell { cell-width: 250px; title: "接口 ID"; }
+                HeaderCell { cell-width: 120px; title: "设备类型"; }
+                HeaderCell { cell-width: 200px; title: "虚拟设备 (/dev)"; }
+                HeaderCell { cell-width: 200px; title: "物理设备"; }
+                HeaderCell { cell-width: 180px; title: "接口 ID"; }
             }
         }
 
         Rectangle {
-            border-color: #d9e1ec;
-            border-width: 1px;
-            background: white;
-            min-height: 260px;
+            height: 1px;
+            background: #e5e7eb;
+        }
 
-            ListView {
-                for row[index] in root.rows : DeviceTableRow {
-                    row-data: row;
-                    row-index: index;
-                    activate-row(index) => {
-                        root.row-selected(index);
-                    }
+        if root.rows.length == 0 : Rectangle {
+            background: white;
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 8px;
+
+                Text {
+                    text: "暂无设备数据";
+                    color: #6b7280;
+                    font-size: 15px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                }
+
+                Text {
+                    text: "点击上方「刷新设备列表」获取设备信息";
+                    color: #9ca3af;
+                    font-size: 13px;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        if root.rows.length > 0 : ListView {
+            for row[index] in root.rows : DeviceTableRow {
+                row-data: row;
+                row-index: index;
+                activate-row(index) => {
+                    root.row-selected(index);
                 }
             }
         }

@@ -11,6 +11,8 @@
 
 当前这个 Rust 项目只迁移了其中的 `usb_map` 功能，没有实现 `find_4g_module`。
 
+![usb-map-gui](./images/usb-map-gui.png)
+
 ## 功能
 
 本项目提供一个单一用途的 GUI 工具，用于：

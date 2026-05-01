@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use slint::ComponentHandle;
+use slint::{ComponentHandle, PhysicalSize};
 
 use crate::MainWindow;
 use crate::device_scan::scan_serial_devices;
@@ -16,6 +16,9 @@ struct ApplicationState {
     scanned_devices: Vec<SerialDeviceEntry>,
     current_filter: Option<DeviceListFilter>,
 }
+
+const INITIAL_WINDOW_WIDTH: u32 = 1000;
+const INITIAL_WINDOW_HEIGHT: u32 = 700;
 
 pub fn run_application() -> Result<(), slint::PlatformError> {
     let window = MainWindow::new()?;
@@ -33,7 +36,12 @@ pub fn run_application() -> Result<(), slint::PlatformError> {
 
     bind_callbacks(&window, state.clone());
     refresh_device_rows(&window, &state);
-    window.run()
+    window.show()?;
+    window
+        .window()
+        .set_size(PhysicalSize::new(INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT));
+    slint::run_event_loop()?;
+    window.hide()
 }
 
 fn bind_callbacks(window: &MainWindow, state: Rc<RefCell<ApplicationState>>) {
