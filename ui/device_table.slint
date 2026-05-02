@@ -6,105 +6,15 @@ export struct DeviceRowData {
     physical-name: string,
     interface-id: string,
     can-use-for-rule: bool,
-}
-
-component HeaderCell inherits Rectangle {
-    in property <string> title;
-    in property <length> cell-width;
-
-    width: cell-width;
-    height: 36px;
-    background: #f9fafb;
-
-    Text {
-        text: root.title;
-        color: #6b7280;
-        font-size: 12px;
-        font-weight: 600;
-        vertical-alignment: center;
-        x: 12px;
-        width: parent.width - 24px;
-        height: parent.height;
-    }
-}
-
-component ValueCell inherits Rectangle {
-    in property <string> value;
-    in property <length> cell-width;
-    in property <color> text-color: #111827;
-
-    width: cell-width;
-    height: 36px;
-    background: transparent;
-
-    Text {
-        text: root.value;
-        color: root.text-color;
-        font-size: 13px;
-        vertical-alignment: center;
-        x: 12px;
-        width: parent.width - 24px;
-        height: parent.height;
-        overflow: elide;
-    }
-}
-
-component DeviceTableRow inherits Rectangle {
-    in property <DeviceRowData> row-data;
-    in property <int> row-index;
-    callback activate-row(index: int);
-
-    height: 36px;
-    background: touch.has-hover ? #f3f4f6 : white;
-
-    animate background { duration: 150ms; }
-
-    HorizontalLayout {
-        spacing: 0px;
-
-        ValueCell {
-            cell-width: 120px;
-            value: row-data.row-kind-label;
-            text-color: #6b7280;
-        }
-
-        ValueCell {
-            cell-width: 200px;
-            value: row-data.virtual-name;
-        }
-
-        ValueCell {
-            cell-width: 200px;
-            value: row-data.physical-name;
-        }
-
-        ValueCell {
-            cell-width: 180px;
-            value: row-data.interface-id;
-            text-color: row-data.can-use-for-rule ? #059669 : #d97706;
-        }
-    }
-
-    touch := TouchArea {
-        mouse-cursor: pointer;
-        clicked => {
-            root.activate-row(root.row-index);
-        }
-    }
-
-    Rectangle {
-        y: parent.height - 1px;
-        width: parent.width;
-        height: 1px;
-        background: #f3f4f6;
-    }
+    row-kind-icon: string,
+    status: string,
 }
 
 export component DeviceTable inherits Rectangle {
     in property <[DeviceRowData]> rows;
     callback row-selected(index: int);
 
-    border-radius: 8px;
+    border-radius: 12px;
     border-width: 1px;
     border-color: #e5e7eb;
     background: white;
@@ -113,27 +23,56 @@ export component DeviceTable inherits Rectangle {
     VerticalLayout {
         spacing: 0px;
 
+        // Header
         Rectangle {
-            height: 36px;
+            height: 44px;
             background: #f9fafb;
 
             HorizontalLayout {
                 spacing: 0px;
 
-                HeaderCell { cell-width: 120px; title: "设备类型"; }
-                HeaderCell { cell-width: 200px; title: "虚拟设备 (/dev)"; }
-                HeaderCell { cell-width: 200px; title: "物理设备"; }
-                HeaderCell { cell-width: 180px; title: "接口 ID"; }
+                Rectangle { width: 16px; }
+                Rectangle {
+                    width: 160px;
+                    Text { text: "设备类型"; color: #6b7280; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-alignment: center; height: parent.height; width: parent.width; }
+                }
+                Rectangle {
+                    width: 180px;
+                    Text { text: "虚拟设备 (/dev)"; color: #6b7280; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-alignment: center; height: parent.height; width: parent.width; }
+                }
+                Rectangle {
+                    width: 160px;
+                    Text { text: "物理设备"; color: #6b7280; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-alignment: center; height: parent.height; width: parent.width; }
+                }
+                Rectangle {
+                    width: 140px;
+                    Text { text: "接口 ID"; color: #6b7280; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-alignment: center; height: parent.height; width: parent.width; }
+                }
+                Rectangle {
+                    width: 120px;
+                    Text { text: "状态"; color: #6b7280; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-alignment: center; height: parent.height; width: parent.width; }
+                }
+                Rectangle { horizontal-stretch: 1; }
+            }
+
+            // 垂直分割线
+            Rectangle { x: 176px; y: 8px; width: 1px; height: parent.height - 16px; background: #e5e7eb; }
+            Rectangle { x: 356px; y: 8px; width: 1px; height: parent.height - 16px; background: #e5e7eb; }
+            Rectangle { x: 516px; y: 8px; width: 1px; height: parent.height - 16px; background: #e5e7eb; }
+            Rectangle { x: 656px; y: 8px; width: 1px; height: parent.height - 16px; background: #e5e7eb; }
+
+            Rectangle {
+                y: parent.height - 1px;
+                width: parent.width;
+                height: 1px;
+                background: #e5e7eb;
             }
         }
 
-        Rectangle {
-            height: 1px;
-            background: #e5e7eb;
-        }
-
+        // Empty state
         if root.rows.length == 0 : Rectangle {
             background: white;
+            min-height: 200px;
 
             VerticalLayout {
                 alignment: center;
@@ -156,12 +95,152 @@ export component DeviceTable inherits Rectangle {
             }
         }
 
+        // Data rows
         if root.rows.length > 0 : ListView {
-            for row[index] in root.rows : DeviceTableRow {
-                row-data: row;
-                row-index: index;
-                activate-row(index) => {
-                    root.row-selected(index);
+            for row[index] in root.rows : Rectangle {
+                height: 48px;
+                background: touch.has-hover ? #f9fafb : white;
+
+                animate background { duration: 120ms; }
+
+                HorizontalLayout {
+                    spacing: 0px;
+
+                    Rectangle { width: 16px; }
+
+                    // 设备类型: icon + text
+                    Rectangle {
+                        width: 160px;
+
+                        Rectangle {
+                            x: 0;
+                            y: (parent.height - 28px) / 2;
+                            width: 28px;
+                            height: 28px;
+                            border-radius: 6px;
+                            background: row.row-kind-icon == "link" ? #eff6ff : #f0fdf4;
+
+                            Text {
+                                text: row.row-kind-icon == "link" ? "🔗" : "⚙";
+                                font-size: 14px;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                                width: parent.width;
+                                height: parent.height;
+                            }
+                        }
+
+                        Text {
+                            x: 36px;
+                            text: row.row-kind-label;
+                            color: #374151;
+                            font-size: 13px;
+                            font-weight: 500;
+                            vertical-alignment: center;
+                            height: parent.height;
+                        }
+                    }
+
+                    // 虚拟设备
+                    Rectangle {
+                        width: 180px;
+                        Text {
+                            text: row.virtual-name;
+                            color: #374151;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            height: parent.height;
+                            width: parent.width;
+                            overflow: elide;
+                        }
+                    }
+
+                    // 物理设备
+                    Rectangle {
+                        width: 160px;
+                        Text {
+                            text: row.physical-name;
+                            color: #374151;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            height: parent.height;
+                            width: parent.width;
+                            overflow: elide;
+                        }
+                    }
+
+                    // 接口 ID
+                    Rectangle {
+                        width: 140px;
+                        Text {
+                            text: row.interface-id;
+                            color: row.can-use-for-rule ? #374151 : #f59e0b;
+                            font-size: 13px;
+                            font-weight: row.can-use-for-rule ? 400 : 600;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            height: parent.height;
+                            width: parent.width;
+                        }
+                    }
+
+                    // 状态 badge
+                    Rectangle {
+                        width: 120px;
+
+                        Rectangle {
+                            x: (parent.width - 72px) / 2;
+                            y: (parent.height - 26px) / 2;
+                            width: 72px;
+                            height: 26px;
+                            border-radius: 13px;
+                            background: row.status == "可用" ? #f0fdf4 : #fef3c7;
+
+                            Rectangle {
+                                x: 12px;
+                                y: (parent.height - 8px) / 2;
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 4px;
+                                background: row.status == "可用" ? #22c55e : #f59e0b;
+                            }
+
+                            Text {
+                                x: 26px;
+                                text: row.status;
+                                color: row.status == "可用" ? #16a34a : #d97706;
+                                font-size: 12px;
+                                font-weight: 500;
+                                vertical-alignment: center;
+                                height: parent.height;
+                            }
+                        }
+                    }
+
+                    Rectangle { horizontal-stretch: 1; }
+                }
+
+                // 垂直分割线
+                Rectangle { x: 176px; y: 8px; width: 1px; height: parent.height - 16px; background: #f3f4f6; }
+                Rectangle { x: 356px; y: 8px; width: 1px; height: parent.height - 16px; background: #f3f4f6; }
+                Rectangle { x: 516px; y: 8px; width: 1px; height: parent.height - 16px; background: #f3f4f6; }
+                Rectangle { x: 656px; y: 8px; width: 1px; height: parent.height - 16px; background: #f3f4f6; }
+
+                touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        root.row-selected(index);
+                    }
+                }
+
+                Rectangle {
+                    y: parent.height - 1px;
+                    x: 16px;
+                    width: parent.width - 32px;
+                    height: 1px;
+                    background: #f3f4f6;
                 }
             }
         }
