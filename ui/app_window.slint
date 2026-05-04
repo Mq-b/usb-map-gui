@@ -1,25 +1,29 @@
+// USB Serial Mapper — Redesigned UI
+// Design system: modern-minimal (Linear / Notion)
+// Tokens: bg=#fafbfc  surface=#fff  fg=#1a2538  muted=#6b7c93  border=#e5e9ee  accent=#3b82f6
+
 import { LineEdit, ScrollView } from "std-widgets.slint";
 import { DeviceTable, DeviceRowData } from "./device_table.slint";
 
+// ── Primary action button ──
 component ActionButton inherits Rectangle {
     in property <string> label;
-    in property <bool> primary: false;
     callback clicked;
 
-    min-width: primary ? 160px : 120px;
-    height: 36px;
-    border-radius: 6px;
-    border-width: 1px;
-    border-color: primary ? touch.has-hover ? #1a4fd6 : #2f63f6 : touch.has-hover ? #b8c4d6 : #d7deea;
-    background: primary ? touch.has-hover ? #1a4fd6 : #2f63f6 : touch.has-hover ? #f8fafc : white;
+    min-width: 100px;
+    height: 34px;
+    border-radius: 8px;
+    border-width: 0px;
+    background: touch.has-hover ? #2563eb : #3b82f6;
 
-    animate border-color, background { duration: 150ms; }
+    animate background { duration: 150ms; }
 
     Text {
         text: root.label;
-        color: root.primary ? white : #243750;
-        font-size: 14px;
+        color: white;
+        font-size: 13px;
         font-weight: 600;
+        letter-spacing: -0.2px;
         horizontal-alignment: center;
         vertical-alignment: center;
         width: parent.width;
@@ -28,30 +32,26 @@ component ActionButton inherits Rectangle {
 
     touch := TouchArea {
         mouse-cursor: pointer;
-        clicked => {
-            root.clicked();
-        }
+        clicked => { root.clicked(); }
     }
 }
 
-component FilterButton inherits Rectangle {
+// ── Filter chip (segmented control style) ──
+component FilterChip inherits Rectangle {
     in property <string> label;
     in property <bool> active: false;
     callback clicked;
 
-    min-width: 100px;
-    height: 32px;
-    border-radius: 6px;
-    border-width: 1px;
-    border-color: active ? #2f63f6 : touch.has-hover ? #b8c4d6 : #d7deea;
-    background: active ? #eef2ff : touch.has-hover ? #f8fafc : white;
-
-    animate border-color, background { duration: 150ms; }
+    min-width: 80px;
+    height: 30px;
+    border-radius: 7px;
+    background: active ? #ffffff : transparent;
+    border-width: 0px;
 
     Text {
         text: root.label;
-        color: active ? #2f63f6 : #475569;
-        font-size: 13px;
+        color: active ? #1a2538 : #6b7c93;
+        font-size: 12px;
         font-weight: active ? 600 : 500;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -61,40 +61,43 @@ component FilterButton inherits Rectangle {
 
     touch := TouchArea {
         mouse-cursor: pointer;
-        clicked => {
-            root.clicked();
-        }
+        clicked => { root.clicked(); }
     }
 }
 
+// ── Form field with label ──
 component FormField inherits Rectangle {
     in property <string> field-label;
     in-out property <string> field-value;
     in property <string> placeholder;
+    in property <bool> mono: false;
 
     vertical-stretch: 0;
     background: transparent;
 
     VerticalLayout {
-        spacing: 4px;
+        spacing: 5px;
 
         Text {
             text: root.field-label;
-            color: #374151;
-            font-size: 13px;
+            color: #6b7c93;
+            font-size: 11px;
             font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
         Rectangle {
             height: 36px;
-            border-radius: 6px;
+            border-radius: 7px;
             border-width: 1px;
-            border-color: #d1d5db;
-            background: white;
+            border-color: #e5e9ee;
+            background: #fafbfc;
 
             LineEdit {
                 text <=> root.field-value;
                 placeholder-text: root.placeholder;
+                font-family: root.mono ? "monospace" : "sans-serif";
+                font-size: root.mono ? 12px : 13px;
                 x: 10px;
                 y: 6px;
                 width: parent.width - 20px;
@@ -104,12 +107,79 @@ component FormField inherits Rectangle {
     }
 }
 
-export component MainWindow inherits Window {
-    title: "USB Serial Mapper";
-    min-width: 900px;
-    min-height: 640px;
+// ── Status bar ──
+component StatusBar inherits Rectangle {
+    in property <string> message;
+    in property <string> kind; // "idle", "ok", "err"
+
+    height: 36px;
+    border-radius: 8px;
+
+    background: kind == "ok" ? #ecfdf5 : kind == "err" ? #fef2f2 : #f9fafb;
+    animate background { duration: 300ms; }
+
+    // Indicator dot
+    Rectangle {
+        x: 14px;
+        y: (parent.height - 7px) / 2;
+        width: 7px;
+        height: 7px;
+        border-radius: 3.5px;
+        background: kind == "ok" ? #22c55e : kind == "err" ? #ef4444 : #e5e9ee;
+        animate background { duration: 300ms; }
+    }
+
+    Text {
+        text: root.message;
+        color: kind == "ok" ? #15803d : kind == "err" ? #dc2626 : #6b7c93;
+        font-size: 12px;
+        font-weight: 500;
+                        letter-spacing: -0.2px;
+        vertical-alignment: center;
+        x: 30px;
+        width: parent.width - 44px;
+        height: parent.height;
+        overflow: elide;
+    }
+}
+
+// ── Rule preview (monospace block) ──
+component RulePreview inherits Rectangle {
+    in property <string> virtual-name;
+    in property <string> physical-id;
+
+    height: virtual-name == "" || physical-id == "" ? 0px : 48px;
+    clip: true;
+    animate height { duration: 200ms; }
+
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: #e5e9ee;
     background: #f9fafb;
 
+    Text {
+        text: "SUBSYSTEM==\"tty\", KERNELS==\"" + root.physical-id + "\", MODE:=\"0664\", SYMLINK+=\"" + root.virtual-name + "\"";
+        font-family: "monospace";
+        font-size: 12px;
+        font-weight: 500;
+        color: #1a2538;
+        vertical-alignment: center;
+        x: 12px;
+        y: 0px;
+        width: parent.width - 24px;
+        height: parent.height;
+        overflow: elide;
+    }
+}
+
+// ── Main window ──
+export component MainWindow inherits Window {
+    title: "USB Serial Mapper";
+    min-width: 920px;
+    min-height: 660px;
+    background: #fafbfc;
+
+    // ── State properties ──
     in-out property <string> virtual-name-input;
     in-out property <string> physical-id-input;
     in-out property <string> rule-file-input;
@@ -119,6 +189,7 @@ export component MainWindow inherits Window {
     in property <int> device-count;
     in property <[DeviceRowData]> device-rows;
 
+    // ── Callbacks ──
     callback request-refresh();
     callback select-all-filter();
     callback select-virtual-filter();
@@ -127,69 +198,75 @@ export component MainWindow inherits Window {
     callback save-rule-requested();
 
     VerticalLayout {
-        padding: 16px;
-        spacing: 12px;
+        padding-top: 20px;
+        padding-left: 24px;
+        padding-right: 24px;
+        padding-bottom: 24px;
+        spacing: 14px;
 
-        // Toolbar
+        // ── Toolbar row ──
         HorizontalLayout {
-            spacing: 8px;
+            spacing: 12px;
             alignment: stretch;
 
             Text {
                 text: "USB Serial Mapper";
-                color: #111827;
-                font-size: 18px;
+                color: #1a2538;
+                font-size: 17px;
                 font-weight: 700;
+                letter-spacing: -0.3px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: root.device-count + " 个设备";
+                color: #6b7c93;
+                font-size: 12px;
+                font-weight: 600;
                 vertical-alignment: center;
             }
 
             Rectangle { horizontal-stretch: 1; }
 
             ActionButton {
-                primary: true;
-                label: "刷新设备列表";
+                label: "刷新";
                 clicked => { root.request-refresh(); }
             }
         }
 
-        // Filter bar
-        HorizontalLayout {
-            spacing: 6px;
+        // ── Filter bar (segmented control) ──
+        Rectangle {
+            border-radius: 9px;
+            border-width: 1px;
+            border-color: #e5e9ee;
+            background: #f5f6f8;
+            horizontal-stretch: 0;
 
-            FilterButton {
-                label: "全部";
-                active: root.current-filter-label == "全部设备";
-                clicked => { root.select-all-filter(); }
-            }
+            HorizontalLayout {
+                spacing: 4px;
+                padding: 3px;
 
-            FilterButton {
-                label: "虚拟链接";
-                active: root.current-filter-label == "仅虚拟链接";
-                clicked => { root.select-virtual-filter(); }
-            }
+                FilterChip {
+                    label: "全部设备";
+                    active: root.current-filter-label == "全部设备";
+                    clicked => { root.select-all-filter(); }
+                }
 
-            FilterButton {
-                label: "物理设备";
-                active: root.current-filter-label == "仅物理设备";
-                clicked => { root.select-physical-filter(); }
-            }
+                FilterChip {
+                    label: "虚拟链接";
+                    active: root.current-filter-label == "仅虚拟链接";
+                    clicked => { root.select-virtual-filter(); }
+                }
 
-            Rectangle {
-                horizontal-stretch: 1;
-
-                Text {
-                    text: "共 " + root.device-count + " 个设备";
-                    color: #9ca3af;
-                    font-size: 12px;
-                    horizontal-alignment: right;
-                    vertical-alignment: center;
-                    width: parent.width;
-                    height: parent.height;
+                FilterChip {
+                    label: "物理设备";
+                    active: root.current-filter-label == "仅物理设备";
+                    clicked => { root.select-physical-filter(); }
                 }
             }
         }
 
-        // Device table
+        // ── Device table ──
         DeviceTable {
             vertical-stretch: 1;
             rows: root.device-rows;
@@ -198,83 +275,105 @@ export component MainWindow inherits Window {
             }
         }
 
-        // Rule form card
+        // ── Rule form card ──
         Rectangle {
-            border-radius: 8px;
+            border-radius: 10px;
             border-width: 1px;
-            border-color: #e5e7eb;
-            background: white;
+            border-color: #e5e9ee;
+            background: #ffffff;
             vertical-stretch: 0;
             clip: true;
 
             VerticalLayout {
-                padding: 16px;
-                spacing: 12px;
+                spacing: 0px;
 
-                HorizontalLayout {
-                    spacing: 12px;
-                    alignment: stretch;
+                // Form header
+                Rectangle {
+                    height: 44px;
+                    background: #ffffff;
 
-                    Text {
-                        text: "udev 规则";
-                        color: #111827;
-                        font-size: 15px;
-                        font-weight: 700;
-                        vertical-alignment: center;
+                    HorizontalLayout {
+                        padding-top: 0px;
+                        padding-bottom: 0px;
+                        padding-left: 18px;
+                        padding-right: 18px;
+                        spacing: 12px;
+
+                        Text {
+                            text: "udev 规则";
+                            color: #1a2538;
+                            font-size: 14px;
+                            font-weight: 700;
+        letter-spacing: -0.2px;
+                            vertical-alignment: center;
+                        }
+
+                        Rectangle { horizontal-stretch: 1; }
+
+                        ActionButton {
+                            label: "添加规则";
+                            clicked => { root.save-rule-requested(); }
+                        }
                     }
 
-                    Rectangle { horizontal-stretch: 1; }
-
-                    ActionButton {
-                        primary: true;
-                        label: "添加规则";
-                        clicked => { root.save-rule-requested(); }
+                    Rectangle {
+                        y: parent.height - 1px;
+                        width: parent.width;
+                        height: 1px;
+                        background: #e5e9ee;
                     }
                 }
 
-                HorizontalLayout {
+                // Form body
+                VerticalLayout {
+                    padding-top: 16px;
+                    padding-bottom: 16px;
+                    padding-left: 18px;
+                    padding-right: 18px;
                     spacing: 12px;
 
-                    FormField {
-                        field-label: "虚拟设备名称";
-                        field-value <=> root.virtual-name-input;
-                        placeholder: "例如 ttyCAN";
-                        horizontal-stretch: 1;
+                    HorizontalLayout {
+                        spacing: 12px;
+
+                        FormField {
+                            field-label: "虚拟设备名称";
+                            field-value <=> root.virtual-name-input;
+                            placeholder: "例如 ttyCAN";
+                            mono: true;
+                            horizontal-stretch: 1;
+                        }
+
+                        FormField {
+                            field-label: "物理接口 ID";
+                            field-value <=> root.physical-id-input;
+                            placeholder: "例如 1-4.5:1.0";
+                            mono: true;
+                            horizontal-stretch: 1;
+                        }
+
+                        FormField {
+                            field-label: "规则文件路径";
+                            field-value <=> root.rule-file-input;
+                            placeholder: "/etc/udev/rules.d/relia.rules";
+                            mono: true;
+                            horizontal-stretch: 1.6;
+                        }
                     }
 
-                    FormField {
-                        field-label: "物理接口 ID";
-                        field-value <=> root.physical-id-input;
-                        placeholder: "例如 1-4.5:1.0";
-                        horizontal-stretch: 1;
-                    }
-
-                    FormField {
-                        field-label: "规则文件路径";
-                        field-value <=> root.rule-file-input;
-                        placeholder: "/etc/udev/rules.d/relia.rules";
-                        horizontal-stretch: 2;
+                    // Inline rule preview
+                    RulePreview {
+                        virtual-name: root.virtual-name-input;
+                        physical-id: root.physical-id-input;
                     }
                 }
             }
         }
 
-        // Status bar
-        Rectangle {
-            height: 32px;
-            border-radius: 6px;
-            background: root.status-is-error ? #fef2f2 : #f0fdf4;
-
-            Text {
-                text: root.status-message;
-                color: root.status-is-error ? #dc2626 : #16a34a;
-                font-size: 13px;
-                vertical-alignment: center;
-                x: 12px;
-                width: parent.width - 24px;
-                height: parent.height;
-                overflow: elide;
-            }
+        // ── Status bar ──
+        StatusBar {
+            message: root.status-message;
+            kind: root.status-message == "" ? "idle" :
+                  root.status-is-error ? "err" : "ok";
         }
     }
 }

@@ -43,9 +43,9 @@ pub fn read_rule_request(window: &MainWindow) -> RuleUpdateRequest {
 fn to_row_data(device: &SerialDeviceEntry) -> DeviceRowData {
     DeviceRowData {
         row_kind_label: device.row_kind.label().into(),
-        row_kind_icon: match device.row_kind {
-            crate::models::DeviceRowKind::VirtualLink => "link",
-            crate::models::DeviceRowKind::PhysicalDevice => "gear",
+        row_kind: match device.row_kind {
+            crate::models::DeviceRowKind::VirtualLink => "virtual",
+            crate::models::DeviceRowKind::PhysicalDevice => "physical",
         }
         .into(),
         virtual_name: device.virtual_name.clone().into(),
