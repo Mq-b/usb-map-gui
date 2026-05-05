@@ -1,113 +1,88 @@
 # usb-map-gui
 
-基于上游项目 [Mq-b/usb_map](https://github.com/Mq-b/usb_map) 改写的 Rust + Slint 图形界面版本。
+基于 [`Mq-b/usb_map`](https://github.com/Mq-b/usb_map) 的 Rust + Slint GUI 实现，专用于 Linux USB 串口设备映射与 udev 规则生成。
 
-上游仓库是一个 Linux 下基于 `udev` 的 USB 串口工具集，包含：
+**示例界面：**
 
-1. `usb_map`
-   用于查询 USB 串口设备映射关系，并生成持久化的 udev 规则。
-2. `find_4g_module`
-   用于扫描串口并定位 4G 模块。
+> 虚拟接口示例（通过 [`virtual-usb.sh`](./dev/virtual-usb.sh) 脚本创建）：
 
-当前这个 Rust 项目只迁移了其中的 `usb_map` 功能，没有实现 `find_4g_module`。
+![虚拟接口](./images/usb-map-gui.png)
 
-![usb-map-gui](./images/usb-map-gui.png)
+> 真实设备情况：
 
-## 功能
+![真实设备](./images/usb-map-gui2.png)
 
-本项目提供一个单一用途的 GUI 工具，用于：
+## 功能特性
 
-1. 扫描 `/dev` 下的 `ttyUSB*`、`ttyACM*` 以及相关符号链接
-2. 读取设备对应的 USB 接口 ID
-3. 在界面中展示“虚拟设备 / 物理设备 / 接口 ID”映射关系
-4. 生成或更新 udev 规则文件，为设备创建稳定的 `/dev/<name>` 符号链接
+- 扫描 `/dev` 下的 `ttyUSB*`、`ttyACM*` 设备及符号链接
+- 读取并显示 USB 接口 ID、物理设备路径、虚拟设备名称映射
+- 生成符合 `SUBSYSTEM=="tty"` 格式的 udev 规则，创建稳定的 `/dev/<name>` 符号链接
+- 支持规则文件的创建与更新
 
-## 和上游项目的关系
+## 与上游项目的关系
 
-本仓库的实现依据主要来自上游仓库中的：
+基于上游 C++ 终端程序 `usb_map` 的核心逻辑，主要改进：
 
-1. `src/usb_map.cpp` 的设备扫描与规则生成逻辑
-2. 上游 `README.md` 中对 `usb_map` 命令行行为的说明
-
-与上游相比，本项目的主要变化是：
-
-1. 从 C++ 终端程序改为 Rust + Slint GUI
-2. 只保留 `usb_map` 这一项能力
-3. 将界面、事件绑定、业务逻辑拆分为多个模块，便于维护
-4. 在规则生成时使用 `SUBSYSTEM=="tty"`，同时兼容 `ttyUSB*` 与 `ttyACM*`
+- **技术栈**：C++ → Rust + Slint GUI
+- **架构**：模块化设计（界面、事件、业务逻辑分离）
+- **规则格式**：使用 `SUBSYSTEM=="tty"` 统一兼容 `ttyUSB*` 与 `ttyACM*`
+- **范围**：仅保留 `usb_map` 功能，移除 `find_4g_module`
 
 ## 运行环境
 
-适用平台：
+- Linux 系统
+- 依赖 `/dev`、`udev`、`libudev`
+- 写入 `/etc/udev/rules.d/` 需要 root 权限
 
-1. Linux
-2. 存在 `/dev`、`udev`、`libudev`
-
-如果要把规则写入 `/etc/udev/rules.d/`，通常需要足够的文件写入权限。
-
-## 启动
+## 快速开始
 
 ```bash
 cargo run --release
 ```
 
-启动后界面分为两部分：
+**界面说明：**
 
-1. `设备列表`
-   用来刷新和查看当前串口映射关系
-2. `规则表单`
-   用来生成或更新 udev 规则
-
-点击设备列表中的某一行后，界面会自动把该行的接口 ID 带入下方表单。
+1. **设备列表**：显示当前串口设备映射关系，点击行自动填充表单
+2. **规则表单**：生成或更新 udev 规则
 
 ## 规则格式
 
-程序写入的规则格式为：
+生成的 udev 规则格式：
 
 ```txt
 SUBSYSTEM=="tty", KERNELS=="<物理ID>", MODE:="0664", SYMLINK+="<虚拟名称>"
 ```
 
-保存规则后可执行：
+生效方式：
 
 ```bash
-sudo udevadm control --reload-rules
-sudo udevadm trigger
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
-
-或重启系统使规则生效。
 
 ## 项目结构
 
-```txt
+```
 ui/
-  app_window.slint      主窗口布局
-  device_table.slint    设备列表组件
+  app_window.slint      # 主窗口布局
+  device_table.slint    # 设备列表组件
 
 src/
-  main.rs               程序入口
-  app_controller.rs     界面事件和状态流转
-  ui_bindings.rs        Slint 属性绑定与界面数据转换
-  device_scan.rs        /dev 扫描与 libudev 查询
-  rule_file.rs          udev 规则生成与更新
-  models.rs             共享数据结构
+  main.rs               # 程序入口
+  app_controller.rs     # 界面事件和状态流转
+  ui_bindings.rs        # Slint 属性绑定与界面数据转换
+  device_scan.rs        # /dev 扫描与 libudev 查询
+  rule_file.rs          # udev 规则生成与更新
+  models.rs             # 共享数据结构
 ```
 
-## CI / Release
+## CI/CD
 
-仓库内置 GitHub Actions 工作流，负责：
+GitHub Actions 工作流：
 
-1. 在 `ubuntu-22.04` 和 `ubuntu-24.04` 上编译
-2. 使用 `actions/cache` 缓存 Cargo 依赖与 `target`
-3. 运行 `cargo test`
-4. 在推送 `v*` 标签时，将构建产物上传到 GitHub Releases
+- 在 `ubuntu-22.04` 和 `ubuntu-24.04` 上编译测试
+- 使用 `actions/cache` 缓存依赖
+- 推送 `v*` 标签时自动发布到 GitHub Releases
 
-## 链接说明
+## 依赖说明
 
-Rust crate 依赖会随最终可执行文件一起静态链接到产物中；Linux 下保留为动态链接的部分仅为系统库，例如 `libc`、`libudev` 以及窗口系统相关库。
-
-## 上游项目
-
-上游仓库地址：
-
-`https://github.com/Mq-b/usb_map`
+Rust crate 依赖静态链接，系统库（`libc`、`libudev`、窗口系统库）动态链接。
