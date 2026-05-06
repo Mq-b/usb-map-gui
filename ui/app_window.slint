@@ -196,6 +196,7 @@ export component MainWindow inherits Window {
     callback select-physical-filter();
     callback use-row-for-rule(index: int);
     callback save-rule-requested();
+    callback reload-udev-rules();
 
     VerticalLayout {
         padding-top: 20px;
@@ -309,6 +310,11 @@ export component MainWindow inherits Window {
                         }
 
                         Rectangle { horizontal-stretch: 1; }
+
+                        ActionButton {
+                            label: "立即生效";
+                            clicked => { root.reload-udev-rules(); }
+                        }
 
                         ActionButton {
                             label: "添加规则";

@@ -6,7 +6,7 @@ use slint::{ComponentHandle, PhysicalSize};
 use crate::MainWindow;
 use crate::device_scan::scan_serial_devices;
 use crate::models::{DEFAULT_RULE_FILE_PATH, DeviceListFilter, SerialDeviceEntry};
-use crate::rule_file::update_rule_file;
+use crate::rule_file::{reload_udev_rules, update_rule_file};
 use crate::ui_bindings::{
     apply_device_rows, fill_rule_form_from_row, read_rule_request, show_status,
 };
@@ -96,6 +96,13 @@ fn bind_callbacks(window: &MainWindow, state: Rc<RefCell<ApplicationState>>) {
             handle_rule_save(&window);
         }
     });
+
+    let weak_window = window.as_weak();
+    window.on_reload_udev_rules(move || {
+        if let Some(window) = weak_window.upgrade() {
+            handle_udev_reload(&window);
+        }
+    });
 }
 
 fn refresh_device_rows(window: &MainWindow, state: &Rc<RefCell<ApplicationState>>) {
@@ -171,6 +178,13 @@ fn handle_rule_save(window: &MainWindow) {
                 false,
             );
         }
+        Err(error_message) => show_status(window, error_message, true),
+    }
+}
+
+fn handle_udev_reload(window: &MainWindow) {
+    match reload_udev_rules() {
+        Ok(()) => show_status(window, "udev 规则已重新加载并生效。", false),
         Err(error_message) => show_status(window, error_message, true),
     }
 }

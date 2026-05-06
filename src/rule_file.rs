@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use crate::models::RuleUpdateRequest;
 
@@ -102,6 +103,30 @@ fn ensure_parent_directory(rule_file_path: &Path) -> Result<(), String> {
             parent_directory.display()
         )
     })
+}
+
+pub fn reload_udev_rules() -> Result<(), String> {
+    let output = Command::new("sudo")
+        .args(["udevadm", "control", "--reload-rules"])
+        .output()
+        .map_err(|e| format!("执行 udevadm control --reload-rules 失败: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("udevadm control --reload-rules 失败: {stderr}"));
+    }
+
+    let output = Command::new("sudo")
+        .args(["udevadm", "trigger"])
+        .output()
+        .map_err(|e| format!("执行 udevadm trigger 失败: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("udevadm trigger 失败: {stderr}"));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
