@@ -110,7 +110,7 @@ fn read_usb_interface_id(udev_context: &Udev, tty_device_name: &str) -> String {
 }
 
 fn is_supported_serial_device_name(device_name: &str) -> bool {
-    device_name.starts_with("ttyUSB") || device_name.starts_with("ttyACM")
+    device_name.starts_with("ttyUSB") || device_name.starts_with("ttyACM") || device_name.starts_with("ttyS")
 }
 
 fn file_name_string(path: &Path) -> String {

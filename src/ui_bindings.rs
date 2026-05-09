@@ -25,11 +25,23 @@ pub fn show_status(window: &MainWindow, message: impl Into<SharedString>, is_err
 }
 
 pub fn fill_rule_form_from_row(window: &MainWindow, device: &SerialDeviceEntry) {
-    if !device.suggested_virtual_name().is_empty() {
-        window.set_virtual_name_input(device.suggested_virtual_name().into());
+    if device.is_standard_serial() {
+        // 标准串口设备：只填充虚拟名称，清除物理 ID
+        window.set_is_selected_standard_serial(true);
+        if !device.suggested_virtual_name().is_empty() {
+            window.set_virtual_name_input(device.suggested_virtual_name().into());
+        } else {
+            window.set_virtual_name_input("".into());
+        }
+        window.set_physical_id_input("".into());
+    } else {
+        // USB 设备：填充虚拟名称和物理 ID
+        window.set_is_selected_standard_serial(false);
+        if !device.suggested_virtual_name().is_empty() {
+            window.set_virtual_name_input(device.suggested_virtual_name().into());
+        }
+        window.set_physical_id_input(device.interface_id.clone().into());
     }
-
-    window.set_physical_id_input(device.interface_id.clone().into());
 }
 
 pub fn read_rule_request(window: &MainWindow) -> RuleUpdateRequest {

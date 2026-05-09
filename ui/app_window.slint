@@ -188,6 +188,7 @@ export component MainWindow inherits Window {
     in property <string> current-filter-label;
     in property <int> device-count;
     in property <[DeviceRowData]> device-rows;
+    in property <bool> is-selected-standard-serial: false;
 
     // ── Callbacks ──
     callback request-refresh();
@@ -197,6 +198,7 @@ export component MainWindow inherits Window {
     callback use-row-for-rule(index: int);
     callback save-rule-requested();
     callback reload-udev-rules();
+    callback create-symlink();
 
     VerticalLayout {
         padding-top: 20px;
@@ -301,24 +303,29 @@ export component MainWindow inherits Window {
                         spacing: 12px;
 
                         Text {
-                            text: "udev 规则";
+                            text: root.is-selected-standard-serial ? "虚拟链接" : "udev 规则";
                             color: #1a2538;
                             font-size: 14px;
                             font-weight: 700;
-        letter-spacing: -0.2px;
+                            letter-spacing: -0.2px;
                             vertical-alignment: center;
                         }
 
                         Rectangle { horizontal-stretch: 1; }
 
-                        ActionButton {
+                        if !root.is-selected-standard-serial : ActionButton {
                             label: "立即生效";
                             clicked => { root.reload-udev-rules(); }
                         }
 
-                        ActionButton {
+                        if !root.is-selected-standard-serial : ActionButton {
                             label: "添加规则";
                             clicked => { root.save-rule-requested(); }
+                        }
+
+                        if root.is-selected-standard-serial : ActionButton {
+                            label: "创建链接";
+                            clicked => { root.create-symlink(); }
                         }
                     }
 
@@ -338,7 +345,7 @@ export component MainWindow inherits Window {
                     padding-right: 18px;
                     spacing: 12px;
 
-                    HorizontalLayout {
+                    if !root.is-selected-standard-serial : HorizontalLayout {
                         spacing: 12px;
 
                         FormField {
@@ -366,8 +373,28 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    // Inline rule preview
-                    RulePreview {
+                    if root.is-selected-standard-serial : HorizontalLayout {
+                        spacing: 12px;
+
+                        FormField {
+                            field-label: "虚拟设备名称";
+                            field-value <=> root.virtual-name-input;
+                            placeholder: "例如 ttySerial0";
+                            mono: true;
+                            horizontal-stretch: 1;
+                        }
+
+                        Text {
+                            text: "将在 /dev 目录下创建指向物理设备的符号链接";
+                            color: #6b7c93;
+                            font-size: 12px;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                        }
+                    }
+
+                    // Inline rule preview (only for USB devices)
+                    if !root.is-selected-standard-serial : RulePreview {
                         virtual-name: root.virtual-name-input;
                         physical-id: root.physical-id-input;
                     }

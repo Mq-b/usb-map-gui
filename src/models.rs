@@ -52,8 +52,12 @@ impl SerialDeviceEntry {
         }
     }
 
+    pub fn is_standard_serial(&self) -> bool {
+        self.physical_name.starts_with("ttyS")
+    }
+
     pub fn can_fill_rule(&self) -> bool {
-        self.interface_id != UNKNOWN_INTERFACE_ID
+        !self.is_standard_serial() && self.interface_id != UNKNOWN_INTERFACE_ID
     }
 
     pub fn suggested_virtual_name(&self) -> String {
@@ -99,5 +103,61 @@ impl RuleUpdateRequest {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_standard_serial_detection() {
+        let tty_s_device = SerialDeviceEntry {
+            row_kind: DeviceRowKind::PhysicalDevice,
+            virtual_name: "-".into(),
+            physical_name: "ttyS0".into(),
+            interface_id: "N/A".into(),
+        };
+        assert!(tty_s_device.is_standard_serial());
+        assert!(!tty_s_device.can_fill_rule());
+
+        let tty_usb_device = SerialDeviceEntry {
+            row_kind: DeviceRowKind::PhysicalDevice,
+            virtual_name: "-".into(),
+            physical_name: "ttyUSB0".into(),
+            interface_id: "1-4.5:1.0".into(),
+        };
+        assert!(!tty_usb_device.is_standard_serial());
+        assert!(tty_usb_device.can_fill_rule());
+    }
+
+    #[test]
+    fn test_standard_serial_filter() {
+        let tty_s_device = SerialDeviceEntry {
+            row_kind: DeviceRowKind::PhysicalDevice,
+            virtual_name: "-".into(),
+            physical_name: "ttyS0".into(),
+            interface_id: "N/A".into(),
+        };
+
+        let tty_usb_device = SerialDeviceEntry {
+            row_kind: DeviceRowKind::PhysicalDevice,
+            virtual_name: "-".into(),
+            physical_name: "ttyUSB0".into(),
+            interface_id: "1-4.5:1.0".into(),
+        };
+
+        // ttyS 设备应该在"物理设备"和"全部设备"过滤中显示
+        assert!(tty_s_device.matches_filter(DeviceListFilter::PhysicalDevicesOnly));
+        assert!(tty_s_device.matches_filter(DeviceListFilter::AllDevices));
+        assert!(tty_usb_device.matches_filter(DeviceListFilter::PhysicalDevicesOnly));
+        assert!(tty_usb_device.matches_filter(DeviceListFilter::AllDevices));
+    }
+
+    #[test]
+    fn test_filter_labels() {
+        assert_eq!(DeviceListFilter::AllDevices.label(), "全部设备");
+        assert_eq!(DeviceListFilter::VirtualLinksOnly.label(), "仅虚拟链接");
+        assert_eq!(DeviceListFilter::PhysicalDevicesOnly.label(), "仅物理设备");
     }
 }

@@ -5,11 +5,14 @@ DEVICES=(
     "ttyUSB0 188 0"
     "ttyUSB1 188 1"
     "ttyACM0 166 0"
+    "ttyS0 4 64"
+    "ttyS1 4 65"
 )
 
 SYMLINKS=(
     "ttyMyDevice ttyUSB0"
     "ttyModem ttyACM0"
+    "ttySerial0 ttyS0"
 )
 
 usage() {

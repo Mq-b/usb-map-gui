@@ -103,6 +103,14 @@ fn bind_callbacks(window: &MainWindow, state: Rc<RefCell<ApplicationState>>) {
             handle_udev_reload(&window);
         }
     });
+
+    let weak_window = window.as_weak();
+    let symlink_state = state.clone();
+    window.on_create_symlink(move || {
+        if let Some(window) = weak_window.upgrade() {
+            handle_symlink_creation(&window, &symlink_state);
+        }
+    });
 }
 
 fn refresh_device_rows(window: &MainWindow, state: &Rc<RefCell<ApplicationState>>) {
@@ -151,17 +159,23 @@ fn handle_row_selection(
         return;
     };
 
-    if !device.can_fill_rule() {
-        show_status(window, "该设备没有可用的接口 ID，无法直接生成规则。", true);
-        return;
-    }
-
     fill_rule_form_from_row(window, device);
-    show_status(
-        window,
-        "已将所选设备的接口 ID 带入规则表单，可以直接保存规则。",
-        false,
-    );
+
+    if device.is_standard_serial() {
+        show_status(
+            window,
+            "已选中标准串口设备，可以创建虚拟链接。",
+            false,
+        );
+    } else if !device.can_fill_rule() {
+        show_status(window, "该设备没有可用的接口 ID，无法直接生成规则。", true);
+    } else {
+        show_status(
+            window,
+            "已将所选设备的接口 ID 带入规则表单，可以直接保存规则。",
+            false,
+        );
+    }
 }
 
 fn handle_rule_save(window: &MainWindow) {
@@ -187,4 +201,68 @@ fn handle_udev_reload(window: &MainWindow) {
         Ok(()) => show_status(window, "udev 规则已重新加载并生效。", false),
         Err(error_message) => show_status(window, error_message, true),
     }
+}
+
+fn handle_symlink_creation(window: &MainWindow, state: &Rc<RefCell<ApplicationState>>) {
+    let virtual_name = window.get_virtual_name_input().trim().to_string();
+
+    if virtual_name.is_empty() {
+        show_status(window, "虚拟设备名称不能为空。", true);
+        return;
+    }
+
+    if virtual_name.contains('/') {
+        show_status(window, "虚拟设备名称只需要填写设备名，例如 ttySerial0。", true);
+        return;
+    }
+
+    // 查找当前选中的标准串口设备
+    let state = state.borrow();
+    let active_filter = state.current_filter.unwrap_or(DeviceListFilter::AllDevices);
+    let visible_devices: Vec<_> = state
+        .scanned_devices
+        .iter()
+        .filter(|device| device.matches_filter(active_filter) && device.is_standard_serial())
+        .collect();
+
+    // 使用第一个标准串口设备（如果有多个）
+    let Some(device) = visible_devices.first() else {
+        show_status(window, "未找到标准串口设备。", true);
+        return;
+    };
+
+    let physical_name = &device.physical_name;
+    let symlink_path = format!("/dev/{}", virtual_name);
+    let target_path = format!("/dev/{}", physical_name);
+
+    // 创建符号链接
+    match create_symlink(&target_path, &symlink_path) {
+        Ok(()) => {
+            show_status(
+                window,
+                format!("已创建虚拟链接: {} -> {}", symlink_path, target_path),
+                false,
+            );
+        }
+        Err(error_message) => show_status(window, error_message, true),
+    }
+}
+
+fn create_symlink(target: &str, link_path: &str) -> Result<(), String> {
+    use std::os::unix::fs::symlink;
+    use std::path::Path;
+
+    let link = Path::new(link_path);
+    let target = Path::new(target);
+
+    // 如果链接已存在，先删除
+    if link.exists() || link.symlink_metadata().is_ok() {
+        std::fs::remove_file(link)
+            .map_err(|e| format!("无法删除已存在的链接 {}: {e}", link_path))?;
+    }
+
+    symlink(target, link)
+        .map_err(|e| format!("无法创建符号链接 {}: {e}", link_path))?;
+
+    Ok(())
 }
